@@ -1,69 +1,52 @@
-import json
+import mlflow
 import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 import os
 import numpy as np
-import mlflow
-import mlflow.sklearn
-import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, ConfusionMatrixDisplay
+import warnings
+import sys
 
-#load dataset
-df = pd.read_csv("diabetes_processing.csv")
+if __name__ == "__main__":
+    warnings.filterwarnings("ignore")
+    np.random.seed(40)
 
-#Splitting data
-X = df.drop(columns=['isDiabetes'])
-y = df['isDiabetes']
+    # Load dataset
+    file_path = sys.argv[3] if len(sys.argv) > 3 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "diabetes_cleaned.csv")
+    data = pd.read_csv(file_path)
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state=42)
-
-#Set URI
-mlflow.set_tracking_uri('http://127.0.0.1:5000/')
-
-# Nama proyek
-mlflow.set_experiment("Diabetes_Classification")
-
-with mlflow.start_run():
-    #Inisialisasi dan latih model
-    n_estimators = 100
-    random_state = 42
-    mlflow.autolog()
-    clf = RandomForestClassifier(n_estimators=n_estimators, random_state=random_state)
-    clf.fit(X_train, y_train)
-
-    # Prediksi
-    y_pred = clf.predict(X_test)
-
-    # Evaluasi
-    acc = accuracy_score(y_test, y_pred)
-    prec = precision_score(y_test, y_pred, average='weighted')
-    rec = recall_score(y_test, y_pred, average='weighted')
-    f1 = f1_score(y_test, y_pred, average='weighted')
-
-    # Log MLFlow
-    mlflow.log_param("n_estimators", 100)
-    mlflow.log_param("random_state", 42)
-    mlflow.log_metric("accuracy", acc)
-    mlflow.log_metric("precision", prec)
-    mlflow.log_metric("recall", rec)
-    mlflow.log_metric("f1_score", f1)
-
-    input_example = X_train.iloc[[0]]
-
-    # Buat folder temp untuk artefak manual
-    artifact_dir = "model"
-    os.makedirs(artifact_dir, exist_ok=True)
-
-    # Simpan model
-    mlflow.sklearn.log_model(
-        sk_model=clf,
-        artifact_path="model",
-        input_example=input_example
+    # Split data
+    X_train, X_test, y_train, y_test = train_test_split(
+        data.drop("isDiabetes", axis=1),
+        data["isDiabetes"],
+        random_state=42,
+        test_size=0.2
     )
-    # Log metrics
-    accuracy = clf.score(X_test, y_test)
-    mlflow.log_metric("accuracy", accuracy)
 
+    input_example = X_train[0:5]
 
-    print(f"Model trained and logged to MLflow. Accuracy: {acc:.4f}")
+    # Read CLI parameters
+    n_estimators = int(sys.argv[1]) if len(sys.argv) > 1 else 100
+    max_depth = int(sys.argv[2]) if len(sys.argv) > 2 else None
+
+    with mlflow.start_run():
+        model = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth)
+        model.fit(X_train, y_train)
+
+        predicted = model.predict(X_test)
+
+        # Log model with input example
+        mlflow.sklearn.log_model(
+            sk_model=model,
+            artifact_path="model",
+            input_example=input_example
+        )
+
+        # Log metrics
+        accuracy = model.score(X_test, y_test)
+        mlflow.log_metric("accuracy", accuracy)
+
+        mlflow.log_param("n_estimators", n_estimators)
+        mlflow.log_param("max_depth", max_depth)
+
+        print(f"Run complete. Accuracy: {accuracy:.4f}")
