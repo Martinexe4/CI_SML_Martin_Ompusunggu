@@ -6,6 +6,10 @@ import os
 import numpy as np
 import warnings
 import sys
+import json
+import matplotlib.pyplot as plt
+from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, precision_score, recall_score, f1_score
+
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
@@ -43,10 +47,38 @@ if __name__ == "__main__":
         )
 
         # Log metrics
-        accuracy = model.score(X_test, y_test)
-        mlflow.log_metric("accuracy", accuracy)
+        acc = model.score(X_test, y_test)
+        prec = precision_score(y_test, predicted, average='weighted')
+        rec = recall_score(y_test, predicted, average='weighted')
+        f1 = f1_score(y_test, predicted, average='weighted')
+
+        mlflow.log_metric("accuracy", acc)
+        mlflow.log_metric("precision", prec)
+        mlflow.log_metric("recall", rec)
+        mlflow.log_metric("f1_score", f1)
 
         mlflow.log_param("n_estimators", n_estimators)
         mlflow.log_param("max_depth", max_depth)
 
-        print(f"Run complete. Accuracy: {accuracy:.4f}")
+        # Save confusion matrix
+        os.makedirs("cm", exist_ok=True)
+        fig, ax = plt.subplots(figsize=(6, 6))
+        ConfusionMatrixDisplay.from_estimator(model, X_test, y_test, ax=ax)
+        plt.title("Confusion Matrix")
+        cm_path = os.path.join("cm", "confusion_matrix.png")
+        plt.savefig(cm_path)
+        mlflow.log_artifact(cm_path)
+
+        # Save metrics to JSON
+        metrics = {
+            "accuracy": acc,
+            "precision": prec,
+            "recall": rec,
+            "f1_score": f1
+        }
+        json_path = os.path.join("cm", "metrics.json")
+        with open(json_path, "w") as f:
+            json.dump(metrics, f)
+        mlflow.log_artifact(json_path)
+
+        print(f"Run complete. Accuracy: {acc:.4f}")
