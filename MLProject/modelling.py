@@ -16,7 +16,7 @@ if __name__ == "__main__":
     np.random.seed(40)
 
     # Load dataset
-    file_path = sys.argv[3] if len(sys.argv) > 3 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "diabetes_cleaned.csv")
+    file_path = sys.argv[3] if len(sys.argv) > 3 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "diabetes_processing.csv")
     data = pd.read_csv(file_path)
 
     # Split data
