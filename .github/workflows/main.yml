@@ -13,7 +13,7 @@ permissions:
 
 
 env:
-  CSV_URL: "MLProject/diabetes_processing.csv"
+  CSV_URL: "MLProject/diabetes_preprocessing.csv"
   TARGET_VAR: "isDiabetes"
 
 jobs:
